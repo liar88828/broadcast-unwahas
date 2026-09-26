@@ -35,6 +35,8 @@ Jika menggunakan local path repo:
 Lalu jalankan:
 ```bash
 composer require unwahas/broadcast
+# Atau jika menggunakan path repository lokal:
+composer require unwahas/broadcast:@dev
 ```
 
 ### 2. Publish Konfigurasi

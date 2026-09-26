@@ -3,6 +3,7 @@
     "description": "RabbitMQ Broadcast & Multi-Queue Consumer Package for Laravel",
     "type": "library",
     "license": "MIT",
+    "version": "1.0.0",
     "authors": [
         {
             "name": "UNWAHAS Dev Team"
