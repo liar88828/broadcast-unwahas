@@ -16,6 +16,12 @@
             "name": "UNWAHAS Dev Team"
         }
     ],
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/liar88828/broadcast-unwahas.git"
+        }
+    ],
     "require": {
         "php": ">=8.1",
         "php-amqplib/php-amqplib": "^3.5 || >=3.5",
