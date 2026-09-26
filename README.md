@@ -11,7 +11,7 @@ Package library Laravel untuk integrasi RabbitMQ Broadcast (Fanout Exchange & Di
 ## 📦 Fitur Utama
 
 - **Dependency Injection Ready**: Langsung inject `RabbitMQService` ke Controller, Command, atau Service.
-- **Standarisasi Payload Broadcast**: Format seragam `{ data: [...], from: 'sikawan', model: 'Biodata' }` untuk pertukaran data antar sistem (SIKAWAN, SIKADU, SIMAWA, dll).
+- **Standarisasi Payload Broadcast**: Format seragam `{ data: [...], from: 'sikawan', item: 'Biodata' }` untuk pertukaran data antar sistem (SIKAWAN, SIKADU, SIMAWA, dll).
 - **Helper Standar**: Method `sendDosen($data)` untuk broadcast data master Dosen / Biodata.
 - **Fanout Exchange & Direct Queue Support**: Mendukung pengiriman via Fanout `exchange()` ataupun Direct `queue()`.
 - **Multi-Queue Fanout Consumer**: Mendengarkan beberapa antrean RabbitMQ secara bersamaan dalam satu command daemon dengan heartbeat auto-negotiation.
@@ -112,7 +112,7 @@ Kirim payload ke Fanout Exchange sehingga semua queue yang bind ke exchange ters
 $this->rabbitMQService->exchange(
     data: ['id' => 1, 'nama' => 'Budi'],
     from: 'sikawan',
-    model: 'Biodata',
+    item: 'Biodata',
     exchange: 'laravel_exchange_sikawan' // opsional, default ke config
 );
 ```
@@ -125,7 +125,7 @@ Kirim payload langsung ke Queue tertentu:
 $this->rabbitMQService->queue(
     data: ['id' => 1, 'nama' => 'Budi'],
     from: 'sikawan',
-    model: 'Biodata',
+    item: 'Biodata',
     queue: 'laravel_queue_dosen_sikawan' // opsional, default ke config
 );
 ```
@@ -150,18 +150,18 @@ RabbitMqBroadcast::sendDosen([
 ```php
 'consumers' => [
     [
-        'route' => 'sikawan',
+        'from' => 'sikawan',
         'exchange' => 'laravel_exchange_sikawan',
         'queue' => 'laravel_queue_dosen_sikawan',
-        'item' => [
+        'items' => [
             'Biodata' => [\App\Services\DosenService::class, 'updateDosenConsumer'],
         ],
     ],
     [
-        'route' => 'simawa',
+        'from' => 'simawa',
         'exchange' => 'laravel_exchange_simawa',
         'queue' => 'laravel_queue_sikawan_simawa',
-        'item' => [
+        'items' => [
             'Mahasiswa' => [\App\Services\MahasiswaService::class, 'updateMahasiswaConsumer'],
         ],
     ],
@@ -187,8 +187,8 @@ class DosenService
 # Menjalankan seluruh antrean yang terdaftar
 php artisan rabbitmq:consume
 
-# Menjalankan route tertentu saja
-php artisan rabbitmq:consume --route=sikawan
+# Menjalankan sender tertentu saja
+php artisan rabbitmq:consume --from=sikawan
 ```
 
 ---

@@ -53,7 +53,7 @@ class RabbitMqPublisher
         return $this->exchange(
             data: $payloadData,
             from: $from,
-            model: 'Biodata',
+            item: 'Biodata',
             exchange: $exchange
         );
     }
@@ -63,14 +63,14 @@ class RabbitMqPublisher
      *
      * @param array<string, mixed> $data
      * @param string|null $from
-     * @param string $model
+     * @param string $item
      * @param string|null $exchange
      * @return bool
      */
     public function exchange(
         array $data,
         ?string $from = null,
-        string $model = 'Default',
+        string $item = 'Default',
         ?string $exchange = null
     ): bool {
         $exchangeName = $exchange
@@ -94,9 +94,9 @@ class RabbitMqPublisher
             );
 
             $payload = [
-                'data'  => $data,
-                'from'  => $sender,
-                'model' => $model,
+                'data' => $data,
+                'from' => $sender,
+                'item' => $item,
             ];
 
             $messageBody = json_encode(
@@ -125,14 +125,14 @@ class RabbitMqPublisher
      *
      * @param array<string, mixed> $data
      * @param string|null $from
-     * @param string $model
+     * @param string $item
      * @param string|null $queue
      * @return bool
      */
     public function queue(
         array $data,
         ?string $from = null,
-        string $model = 'Default',
+        string $item = 'Default',
         ?string $queue = null
     ): bool {
         $queueName = $queue
@@ -156,9 +156,9 @@ class RabbitMqPublisher
             );
 
             $payload = [
-                'data'  => $data,
-                'from'  => $sender,
-                'model' => $model,
+                'data' => $data,
+                'from' => $sender,
+                'item' => $item,
             ];
 
             $messageBody = json_encode(
@@ -186,7 +186,7 @@ class RabbitMqPublisher
      * Publish a broadcast message (flexible signature).
      *
      * @param string $exchange
-     * @param string $model
+     * @param string $item
      * @param mixed $data
      * @param string|null $from
      * @param string $routingKey
@@ -194,7 +194,7 @@ class RabbitMqPublisher
      */
     public function publish(
         string $exchange,
-        string $model,
+        string $item,
         mixed $data,
         ?string $from = null,
         string $routingKey = ''
@@ -202,7 +202,7 @@ class RabbitMqPublisher
         return $this->exchange(
             data: (array) $data,
             from: $from,
-            model: $model,
+            item: $item,
             exchange: $exchange
         );
     }

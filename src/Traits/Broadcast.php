@@ -15,10 +15,10 @@ trait Broadcast
      * If not overridden, consumer configuration will be loaded from config('rabbitmq_broadcast.consumers').
      *
      * @var list<array{
-     *     route: string,
+     *     from: string,
      *     exchange: string,
      *     queue: string,
-     *     item: array<string, array{0: string, 1: string}>
+     *     items: array<string, array{0: string, 1: string}>
      * }>|null
      */
     public ?array $consumers = null;
@@ -27,17 +27,17 @@ trait Broadcast
      * Helper to broadcast data to RabbitMQ.
      *
      * @param string $exchange
-     * @param string $model
+     * @param string $item
      * @param mixed $data
      * @param string|null $from
      * @return bool
      */
     public function broadcast(
         string $exchange,
-        string $model,
+        string $item,
         mixed $data,
         ?string $from = null
     ): bool {
-        return RabbitMqBroadcast::publish($exchange, $model, $data, $from);
+        return RabbitMqBroadcast::publish($exchange, $item, $data, $from);
     }
 }

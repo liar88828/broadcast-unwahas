@@ -16,7 +16,8 @@ class RabbitMqPublishCommand extends Command
      */
     protected $signature = 'rabbitmq:publish
                             {--exchange= : The RabbitMQ exchange name}
-                            {--model= : The Model or Event name (e.g. Biodata, Mahasiswa)}
+                            {--item= : The Item or Model name (e.g. Biodata, Mahasiswa)}
+                            {--model= : (Alias for --item) The item name}
                             {--payload= : JSON payload data to send}
                             {--from= : Sender identifier (default: config app_name)}';
 
@@ -29,13 +30,13 @@ class RabbitMqPublishCommand extends Command
 
     public function handle(): int
     {
-        $exchange = (string) ($this->option('exchange') ?? $this->ask('Enter exchange name'));
-        $model = (string) ($this->option('model') ?? $this->ask('Enter model/event name'));
-        $payloadRaw = $this->option('payload') ?? $this->ask('Enter JSON payload data', '{}');
+        $exchange = (string) ($this->option('exchange') ?? '');
+        $item = (string) ($this->option('item') ?? $this->option('model') ?? '');
+        $payloadRaw = (string) ($this->option('payload') ?? '{}');
         $from = $this->option('from');
 
-        if (empty($exchange) || empty($model)) {
-            $this->error('Exchange and model are required.');
+        if (empty($exchange) || empty($item)) {
+            $this->error('Exchange and item are required.');
             return self::FAILURE;
         }
 
@@ -45,9 +46,9 @@ class RabbitMqPublishCommand extends Command
             return self::FAILURE;
         }
 
-        $this->info("Publishing to exchange [{$exchange}] for model [{$model}]...");
+        $this->info("Publishing to exchange [{$exchange}] for item [{$item}]...");
 
-        $success = RabbitMqBroadcast::publish($exchange, $model, $data, $from);
+        $success = RabbitMqBroadcast::publish($exchange, $item, $data, $from);
 
         if ($success) {
             $this->info('Message published successfully!');

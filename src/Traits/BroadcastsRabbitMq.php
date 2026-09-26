@@ -12,17 +12,17 @@ trait BroadcastsRabbitMq
      * Broadcast data to a RabbitMQ exchange.
      *
      * @param string $exchange
-     * @param string $model
+     * @param string $item
      * @param mixed $data
      * @param string|null $from
      * @return bool
      */
     public function broadcastRabbitMq(
         string $exchange,
-        string $model,
+        string $item,
         mixed $data,
         ?string $from = null
     ): bool {
-        return RabbitMqBroadcast::publish($exchange, $model, $data, $from);
+        return RabbitMqBroadcast::publish($exchange, $item, $data, $from);
     }
 }

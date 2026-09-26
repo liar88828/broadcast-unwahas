@@ -26,7 +26,8 @@ class RabbitMqConsumeCommand extends Command
      * @var string
      */
     protected $signature = 'rabbitmq:consume
-                            {--route= : Specific route name to consume (default: all configured routes)}
+                            {--from= : Specific sender name to consume (default: all configured consumers)}
+                            {--route= : (Alias for --from) Specific route/sender name to consume}
                             {--requeue : Requeue messages on processing failure}';
 
     /**
@@ -40,10 +41,13 @@ class RabbitMqConsumeCommand extends Command
      * Resolved consumers list for execution.
      *
      * @var list<array{
-     *     route: string,
+     *     from?: string,
+     *     route?: string,
      *     exchange: string,
      *     queue: string,
-     *     item: array<string, array{0: string, 1: string}|string|callable>
+     *     items?: array<string, array{0: string, 1: string}|string|callable>,
+     *     model?: array<string, array{0: string, 1: string}|string|callable>,
+     *     item?: array<string, array{0: string, 1: string}|string|callable>
      * }>
      */
     protected array $activeConsumers = [];
@@ -53,7 +57,7 @@ class RabbitMqConsumeCommand extends Command
         $this->resolveConsumers();
 
         if (empty($this->activeConsumers)) {
-            $this->warn('No consumers found or matching the given route filter.');
+            $this->warn('No consumers found or matching the given filter.');
             return self::FAILURE;
         }
 
@@ -115,12 +119,12 @@ class RabbitMqConsumeCommand extends Command
         // 1. Check if consumers array was overridden on the class instance
         $configured = $this->consumers ?? config('rabbitmq_broadcast.consumers') ?? [];
 
-        $routeFilter = $this->option('route');
+        $fromFilter = $this->option('from') ?? $this->option('route');
 
-        if ($routeFilter) {
+        if ($fromFilter) {
             $configured = array_values(array_filter(
                 $configured,
-                fn (array $c) => ($c['route'] ?? null) === $routeFilter
+                fn (array $c) => ($c['from'] ?? $c['route'] ?? null) === $fromFilter
             ));
         }
 
@@ -135,7 +139,7 @@ class RabbitMqConsumeCommand extends Command
         $prefetchCount = (int) config('rabbitmq_broadcast.consumer.prefetch_count', 1);
 
         foreach ($this->activeConsumers as $consumer) {
-            $route = $consumer['route'] ?? 'default';
+            $from = $consumer['from'] ?? $consumer['route'] ?? 'default';
             $exchange = $consumer['exchange'];
             $queue = $consumer['queue'];
 
@@ -167,7 +171,7 @@ class RabbitMqConsumeCommand extends Command
                 false
             );
 
-            $this->info("Registered [{$route}] → exchange [{$exchange}] → queue [{$queue}]");
+            $this->info("Registered [{$from}] → exchange [{$exchange}] → queue [{$queue}]");
 
             $channel->basic_consume(
                 $queue,
@@ -176,11 +180,11 @@ class RabbitMqConsumeCommand extends Command
                 false,
                 false,
                 false,
-                function (AMQPMessage $message) use ($channel, $route): void {
+                function (AMQPMessage $message) use ($channel, $from): void {
                     $this->handleMessage(
                         $message,
                         $channel,
-                        $route
+                        $from
                     );
                 }
             );
@@ -193,7 +197,7 @@ class RabbitMqConsumeCommand extends Command
     protected function handleMessage(
         AMQPMessage $message,
         AMQPChannel $channel,
-        string $route
+        string $from
     ): void {
         try {
             $data = json_decode(
@@ -203,27 +207,27 @@ class RabbitMqConsumeCommand extends Command
                 JSON_THROW_ON_ERROR
             );
 
-            $from = $data['from'] ?? 'Unknown';
-            $model = $data['model'] ?? 'Unknown';
+            $sender = $data['from'] ?? $from;
+            $item = $data['item'] ?? $data['model'] ?? 'Unknown';
 
-            $this->comment(sprintf('[%s] Received model [%s] from: %s', $route, $model, $from));
+            $this->comment(sprintf('[%s] Received item [%s] from: %s', $from, $item, $sender));
 
-            $this->dispatchToHandler($route, $data);
+            $this->dispatchToHandler($from, $data);
 
             $channel->basic_ack(
                 $message->getDeliveryTag()
             );
 
-            $this->info("[{$route}] Message processed successfully.");
+            $this->info("[{$from}] Message processed successfully.");
         } catch (Throwable $exception) {
             Log::error('Error processing RabbitMQ payload', [
-                'route' => $route,
+                'from' => $from,
                 'message' => $exception->getMessage(),
                 'payload' => $message->getBody(),
                 'exception' => $exception,
             ]);
 
-            $this->error("[{$route}] Failed: {$exception->getMessage()}");
+            $this->error("[{$from}] Failed: {$exception->getMessage()}");
 
             $requeue = $this->option('requeue')
                 || (bool) config('rabbitmq_broadcast.consumer.requeue_on_failure', false);
@@ -237,18 +241,18 @@ class RabbitMqConsumeCommand extends Command
     }
 
     /**
-     * Resolve and invoke the handler registered for this route/model pair.
+     * Resolve and invoke the handler registered for this from/item pair.
      *
      * @param array<string, mixed> $data
      */
-    protected function dispatchToHandler(string $route, array $data): void
+    protected function dispatchToHandler(string $from, array $data): void
     {
-        $model = $data['model'] ?? null;
-        $consumer = $this->findConsumer($route);
-        $handler = $consumer['item'][$model] ?? null;
+        $item = $data['item'] ?? $data['model'] ?? null;
+        $consumer = $this->findConsumer($from);
+        $handler = $consumer['items'][$item] ?? $consumer['model'][$item] ?? $consumer['item'][$item] ?? null;
 
         if ($handler === null) {
-            $this->warn("[{$route}] Unhandled model: " . ($model ?? 'Unknown'));
+            $this->warn("[{$from}] Unhandled item: " . ($item ?? 'Unknown'));
             return;
         }
 
@@ -274,22 +278,22 @@ class RabbitMqConsumeCommand extends Command
             return;
         }
 
-        throw new RuntimeException("Invalid handler format for model [{$model}] on route [{$route}]");
+        throw new RuntimeException("Invalid handler format for item [{$item}] from [{$from}]");
     }
 
     /**
-     * Find consumer definition by route name.
+     * Find consumer definition by sender/route name.
      *
-     * @return array{route: string, exchange: string, queue: string, item: array<string, mixed>}
+     * @return array{from?: string, route?: string, exchange: string, queue: string, items?: array<string, mixed>, model?: array<string, mixed>, item?: array<string, mixed>}
      */
-    protected function findConsumer(string $route): array
+    protected function findConsumer(string $from): array
     {
         foreach ($this->activeConsumers as $consumer) {
-            if (($consumer['route'] ?? null) === $route) {
+            if (($consumer['from'] ?? $consumer['route'] ?? null) === $from) {
                 return $consumer;
             }
         }
 
-        throw new RuntimeException("Unknown consumer route [{$route}]");
+        throw new RuntimeException("Unknown consumer for [{$from}]");
     }
 }

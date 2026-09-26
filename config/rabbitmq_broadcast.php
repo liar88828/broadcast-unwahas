@@ -52,31 +52,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Consumer Route Definitions
+    | Consumer Definitions
     |--------------------------------------------------------------------------
     |
     | Queue names must be unique per consuming application — two different
     | services binding the same queue name to the same fanout exchange will
     | compete for messages instead of each getting their own copy.
     |
-    | 'item' maps a model name (from message payload) to a [Service::class, 'method']
+    | 'items' maps an item/model name (from message payload) to a [Service::class, 'method']
     | or callable, resolved via Laravel Service Container at dispatch time.
     |
     */
     'consumers' => [
         [
-            'route' => 'sikawan',
+            'from' => 'sikawan',
             'exchange' => env('RABBITMQ_EXCHANGE_SIKAWAN', 'laravel_exchange_sikawan'),
             'queue' => env('RABBITMQ_QUEUE_SIKAWAN', 'laravel_queue_dosen_sikawan'),
-            'item' => [
+            'items' => [
                 // 'Biodata' => [\App\Services\DosenService::class, 'updateDosenConsumer'],
             ],
         ],
         [
-            'route' => 'simawa',
+            'from' => 'simawa',
             'exchange' => env('RABBITMQ_EXCHANGE_SIMAWA', 'laravel_exchange_simawa'),
             'queue' => env('RABBITMQ_QUEUE_SIMAWA', 'laravel_queue_sikawan_simawa'),
-            'item' => [
+            'items' => [
                 // 'Mahasiswa' => [\App\Services\MahasiswaService::class, 'updateMahasiswaConsumer'],
             ],
         ],
